@@ -1,0 +1,4 @@
+serial~=0.0.97
+pyserial~=3.5
+git+https://github.com/askuric/pywitmotion.git
+pygame~=2.5.2
