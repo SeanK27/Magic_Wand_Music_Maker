@@ -18,7 +18,7 @@ pygame.mixer.init(channels=4)
 pygame.mixer.Channel(0)
 
 # Serial baud rate to sample WitMotion data
-baud = 115200
+baud = 9600
 
 # Minimum velocity threshold to signal that IMU is in deliberate motion
 # Change when needed, if IMU is too sensitive, increase this value and vice versa
