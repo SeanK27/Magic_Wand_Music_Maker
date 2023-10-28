@@ -7,27 +7,25 @@ import RPi.GPIO as GPIO  # Interface with GPIO Pins
 import time
 
 # Setup GPIO Inputs
-GPIO.setmode(GPIO.BCM)
-buttonPin0 = 40
-buttonPin1 = 1
-buttonPin2 = 2
-buttonPin3 = 3
-
-# PUD_DOWN sets the internal pull down resistor
-GPIO.setup(buttonPin0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(buttonPin1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(buttonPin2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(buttonPin3, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setmode(GPIO.BOARD)
+buttonPin0 = 32
+buttonPin1 = 16
+buttonPin2 = 18
+buttonPin3 = 22
+GPIO.setup(buttonPin0, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(buttonPin1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(buttonPin2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(buttonPin3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # Store placeholders in velocity vector and angle list
 velocity = [0, 0, 0]
 angle = [0, 0, 0]
 
 # Song tracks with corresponding file paths. Stored in 'songs' folder named 'track#'
-track1 = 'songs/track1.mp3'
-track2 = ''
-track3 = ''
-track4 = ''
+track1 = 'songs/Melody_Track.mp3'
+track2 = 'songs/Chords_Track.mp3'
+track3 = 'songs/Drums_Track.mp3'
+track4 = 'songs/Bass_Track.mp3'
 
 # Setup pygame mixer and channels
 mixer.init(channels=4)
@@ -52,10 +50,10 @@ def get_net_velocity(velocity_list):
 with serial.Serial("/dev/ttyS0", baud, timeout=5) as ser:
     # Begin channels of music.
     # 'track#': corresponding track; 'loops=-1': loop indefinitely; 'fade_ms=1000': fade in and out 1sec
-    mixer.Channel(0).play(mixer.Sound(file=track1), loops=-1, fade_ms=1000)
-    mixer.Channel(2).play(mixer.Sound(file=track3), loops=-1, fade_ms=1000)
-    mixer.Channel(3).play(mixer.Sound(file=track3), loops=-1, fade_ms=1000)
-    mixer.Channel(4).play(mixer.Sound(file=track4), loops=-1, fade_ms=1000)
+    mixer.Channel(0).play(mixer.Sound(file=track1), loops=-1)
+    mixer.Channel(1).play(mixer.Sound(file=track2), loops=-1)
+    ##    mixer.Channel(2).play(mixer.Sound(file=track3), loops=-1)
+    ##    mixer.Channel(3).play(mixer.Sound(file=track4), loops=-1)
 
     while True:
         # Read byte of data from IMU until start bit(0x55 or U in ASCII)
@@ -72,14 +70,25 @@ with serial.Serial("/dev/ttyS0", baud, timeout=5) as ser:
         # Play music when velocity > threshold and pause when <= threshold
         if get_net_velocity(velocity) > threshold:
             mixer.Channel(0).unpause()
+            mixer.Channel(1).unpause()
+        ##            mixer.Channel(2).unpause()
+        ##            mixer.Channel(3).unpause()
+
         elif get_net_velocity(velocity) <= threshold:
             mixer.Channel(0).pause()
+            mixer.Channel(1).pause()
+        ##            mixer.Channel(2).pause()
+        ##            mixer.Channel(3).pause()
 
         # Signal for whether the reference angle has been set
         taredangle = False
         # Reads state of the button and runs program while the button is held down
-        while GPIO.input(buttonPin0) == GPIO.HIGH:
+        while GPIO.input(buttonPin0) == 0:
             # Reads serial data and stores velocity and angle
+            mixer.Channel(0).unpause()
+            mixer.Channel(1).unpause()
+            ##            mixer.Channel(2).unpause()
+            ##            mixer.Channel(3).unpause()
             s = ser.read_until(b'U')
             if wit.get_angle(s) is not None:
                 angle = wit.get_angle(s)
@@ -90,15 +99,22 @@ with serial.Serial("/dev/ttyS0", baud, timeout=5) as ser:
                 taredangle = True
 
             # When the difference between the reference angle and the actual angle is greater than 5 (wand is rotated)
-            if abs(angley_start - angle[1]) > 5:
-                # Set the volume to add or subtract off of the original volume based on the angle.
-                # Full volume is 180degrees turned clockwise
-                mixer.Channel(0).set_volume(mixer.Channel(0).get_volume() + (angle[1] - angley_start) / 180)
-                # Reset the reference angle to prepare for next byte of data
-                angley_start = angle[1]
+            if angle[1] - angley_start > 0 and abs(angle[1] - angley_start) > 10:
+                mixer.Channel(0).set_volume(mixer.Channel(0).get_volume() + 0.04)
+                print("Volume0: " + str(mixer.Channel(0).get_volume()))
+                print("Angle: " + str(angle[1]))
 
-        while GPIO.input(buttonPin1) == GPIO.HIGH:
+            if angle[1] - angley_start < 0 and abs(angle[1] - angley_start) > 10:
+                mixer.Channel(0).set_volume(mixer.Channel(0).get_volume() - 0.04)
+                print("Volume: " + str(mixer.Channel(0).get_volume()))
+                print("Angle: " + str(angle[1]))
+
+        while GPIO.input(buttonPin1) == 0:
             # Reads serial data and stores velocity and angle
+            mixer.Channel(0).unpause()
+            mixer.Channel(1).unpause()
+            ##            mixer.Channel(2).unpause()
+            ##            mixer.Channel(3).unpause()
             s = ser.read_until(b'U')
             if wit.get_angle(s) is not None:
                 angle = wit.get_angle(s)
@@ -109,49 +125,12 @@ with serial.Serial("/dev/ttyS0", baud, timeout=5) as ser:
                 taredangle = True
 
             # When the difference between the reference angle and the actual angle is greater than 5 (wand is rotated)
-            if abs(angley_start - angle[1]) > 5:
-                # Set the volume to add or subtract off of the original volume based on the angle.
-                # Full volume is 180degrees turned clockwise
-                mixer.Channel(1).set_volume(mixer.Channel(1).get_volume() + (angle[1] - angley_start) / 2)
-                # Reset the reference angle to prepare for next byte of data
-                angley_start = angle[1]
+            if angle[1] - angley_start > 0 and abs(angle[1] - angley_start) > 10:
+                mixer.Channel(1).set_volume(mixer.Channel(1).get_volume() + 0.04)
+                print("Volume1: " + str(mixer.Channel(1).get_volume()))
+                print("Angle: " + str(angle[1]))
 
-        while GPIO.input(buttonPin2) == GPIO.HIGH:
-            # Reads serial data and stores velocity and angle
-            s = ser.read_until(b'U')
-            if wit.get_angle(s) is not None:
-                angle = wit.get_angle(s)
-
-            # Sets reference angle of the IMU
-            if not taredangle:
-                angley_start = angle[1]
-                taredangle = True
-
-            # When the difference between the reference angle and the actual angle is greater than 5 (wand is rotated)
-            if abs(angley_start - angle[1]) > 5:
-                # Set the volume to add or subtract off of the original volume based on the angle.
-                # Full volume is 180degrees turned clockwise
-                mixer.Channel(2).set_volume(mixer.Channel(2).get_volume() + (angle[1] - angley_start) / 2)
-                # Reset the reference angle to prepare for next byte of data
-                angley_start = angle[1]
-
-        while GPIO.input(buttonPin3) == GPIO.HIGH:
-            # Reads serial data and stores velocity and angle
-            s = ser.read_until(b'U')
-            if wit.get_angle(s) is not None:
-                angle = wit.get_angle(s)
-
-            # Sets reference angle of the IMU
-            if not taredangle:
-                angley_start = angle[1]
-                taredangle = True
-
-            # When the difference between the reference angle and the actual angle is greater than 5 (wand is rotated)
-            if abs(angley_start - angle[1]) > 5:
-                # Unpause Music when twist
-                mixer.Channel(0).unpause()
-                # Set the volume to add or subtract off of the original volume based on the angle.
-                # Full volume is 180degrees turned clockwise
-                mixer.Channel(3).set_volume(mixer.Channel(3).get_volume() + (angle[1] - angley_start) / 2)
-                # Reset the reference angle to prepare for next byte of data
-                angley_start = angle[1]
+            if angle[1] - angley_start < 0 and abs(angle[1] - angley_start) > 10:
+                mixer.Channel(1).set_volume(mixer.Channel(1).get_volume() - 0.04)
+                print("Volume: " + str(mixer.Channel(1).get_volume()))
+                print("Angle: " + str(angle[1]))
