@@ -3,4 +3,3 @@ pyserial
 git+https://github.com/askuric/pywitmotion.git
 pygame
 RPi.GPIO
-gpiozero
