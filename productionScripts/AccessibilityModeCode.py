@@ -56,6 +56,9 @@ baud = 9600
 # Change when needed, if IMU is too sensitive, increase this value and vice versa
 threshold = 20
 
+# Repeat variable to prevent holding the button
+repeat = True
+
 
 # Calculate magnitude of net velocity vector using distance equation d = sqrt(x^2 + y^2 + z^2)
 def get_net_velocity(velocity_list):
@@ -243,15 +246,21 @@ with serial.Serial("/dev/ttyS0", baud, timeout=5) as ser:
                     mixer.Channel(2).pause()
                     mixer.Channel(3).pause()
 
+                if GPIO.input(buttonPinAbleNet) == 1:
+                    repeat = False
+
                 # On AbleNet button press switch song to a random song that isn't already playing
-                if GPIO.input(buttonPinAbleNet) == 0:
+                if GPIO.input(buttonPinAbleNet) == 0 and not repeat:
                     # Remove current song from choices and store in songNum
                     songNum = songList.pop(currentSongIndex)
                     # Randomly pick a song from the list and store in songChoice
                     songChoice = random.choice(songList)
+                    # Puts the chosen song back into the list and stores the index into currentSongIndex
+                    songList.insert(currentSongIndex, songNum)
                     # Pauses previous song then plays the random song picked before
                     mixer.Channel(songList[currentSongIndex]).pause()
                     mixer.Channel(songChoice).unpause()
-                    # Puts the chosen song back into the list and stores the index into currentSongIndex
-                    songList.insert(currentSongIndex, songNum)
+                    # Stores the index into currentSongIndex
                     currentSongIndex = songList.index(songChoice)
+                    # Sets repeat to true to prevent entering the loop again
+                    repeat = True
